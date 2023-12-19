@@ -1,7 +1,9 @@
 package jptv22kauplus;
 import entity.Customer;
+import entity.Discount;
 import entity.Product;
 import managers.CustomerManager;
+import managers.DiscountManager;
 import managers.ProductManager;
 import managers.StorageManager;
 import tools.InputFromKeyboard;
@@ -15,18 +17,22 @@ public class App {
     private StorageManager storageManager;
     private ProductManager productManager;
     private CustomerManager customerManager;
+    private DiscountManager discountManager;
     private List<Product> products;
     private List<Customer> customers;
+    private List<Discount> discounts;
     private int totalSoldPrice;
 
     public App() {
         this.scanner = new Scanner(System.in);
         this.storageManager = new StorageManager();
         this.productManager = new ProductManager();
+        this.discountManager = new DiscountManager();
         this.customerManager = new CustomerManager();
         this.totalSoldPrice = storageManager.loadTotalSoldPrice();
         this.products = storageManager.loadProducts();
         this.customers = storageManager.loadCustomers();
+        this.discounts = storageManager.loadDiscounts();
     }
 
     void run(){
@@ -47,9 +53,11 @@ public class App {
             System.out.println("10. Edit product");
             System.out.println("11. Edit customer");
             System.out.println("12. List products customer bought");
+            System.out.println("13. Add discount");
+            System.out.println("14. Time before next discount");
 
             System.out.print("Enter task number: ");
-            int task = InputFromKeyboard.inputFromRange(0, 12, this.scanner);
+            int task = InputFromKeyboard.inputFromRange(0, 14, this.scanner);
 
             switch (task){
                 case 0:
@@ -117,6 +125,15 @@ public class App {
                 case 12:
                     if(!IsTrueTask.checkTask("12. List products customer bought", this.scanner)) break;
                     this.customerManager.listProductBought(this.customers, this.scanner, this.productManager);
+                case 13:
+                    if(!IsTrueTask.checkTask("13. Add discount", scanner)) break;
+                    discounts.add(this.discountManager.addDiscount(this.scanner));
+                    this.storageManager.saveDiscounts(this.discounts);
+                    break;
+                case 14:
+                    if(!IsTrueTask.checkTask("14. Time before next discount", scanner)) break;
+                    System.out.println(discountManager.timeBeforeNextDiscount(discounts));
+                    break;
             }
         } while(repeat);
     }

@@ -1,6 +1,7 @@
 package managers;
 
 import entity.Customer;
+import entity.Discount;
 import entity.Product;
 
 import java.io.*;
@@ -104,5 +105,37 @@ public class StorageManager {
             System.out.println("I/O error");
         }
         return totalSoldPrice;
+    }
+    public void saveDiscounts(List<Discount> discounts){
+        FileOutputStream fos;
+        ObjectOutputStream oos;
+
+        try{
+            fos = new FileOutputStream("discounts");
+            oos = new ObjectOutputStream(fos);
+            oos.writeObject(discounts);
+            oos.flush();
+        } catch (FileNotFoundException ex){
+            System.out.println("File not found");
+        } catch (IOException ex){
+            System.out.println("I/O error");
+        }
+    }
+    public List<Discount> loadDiscounts(){
+        List<Discount> discounts = new ArrayList<>();
+        FileInputStream fis;
+        ObjectInputStream ois;
+        try{
+            fis = new FileInputStream("discounts");
+            ois = new ObjectInputStream(fis);
+            discounts = (List<Discount>) ois.readObject();
+        } catch (FileNotFoundException ex){
+            System.out.println("File not found");
+        } catch (IOException ex){
+            System.out.println("I/O error");
+        } catch (ClassNotFoundException ex){
+            System.out.println("Class not found");
+        }
+        return discounts;
     }
 }
