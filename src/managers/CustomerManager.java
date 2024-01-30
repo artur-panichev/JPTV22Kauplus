@@ -2,15 +2,18 @@ package managers;
 
 import entity.Customer;
 import entity.Product;
+import entity.SoldHistory;
 import tools.InputFromKeyboard;
 import tools.IsTrueTask;
 
-import java.util.List;
-import java.util.Scanner;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class CustomerManager {
+    private PersistToDatabase  persistToDatabase = new PersistToDatabase();
+    
     public Customer addCustomer(Scanner scanner){
         System.out.println("\n-------- Add new customer --------\n");
 
@@ -21,6 +24,8 @@ public class CustomerManager {
         String surname = scanner.nextLine();
 
         Customer customer = new Customer(name, surname);
+        
+        persistToDatabase.saveCustomer(customer);
 
         return customer;
     }
@@ -41,14 +46,57 @@ public class CustomerManager {
         int money = scanner.nextInt(); scanner.nextLine();
 
         customers.get(customerNum-1).setBalance(customers.get(customerNum-1).getBalance()+money);
+        
+        persistToDatabase.updateCustomer(customers.get(customerNum-1));
     }
-    public void printCustomersRating(List<Customer> customers){
-        List<Customer> sortedCustomers = customers.stream().sorted(((o1, o2) -> Integer.compare(o2.getProductsPurchanced(), o1.getProductsPurchanced()))).collect(Collectors.toList());
-        for (int i = 0; i < sortedCustomers.size(); i++) {
-            Customer customer = sortedCustomers.get(i);
-            System.out.printf("%d %s $%s $%d - %d purchances\n", i, customer.getName(), customer.getSurname(), customer.getBalance(), customer.getProductsPurchanced());
+    public void printCustomersRating(List<SoldHistory> soldHistories, Scanner scanner){
+        System.out.println("Customers rating:");
+        System.out.println("Select period of rating:");
+        System.out.println("1. Day");
+        System.out.println("2. Month");
+        System.out.println("3. Year");
+        System.out.print("Enter number of period: ");
+        int period = InputFromKeyboard.inputFromRange(1, 3, scanner);
+
+        HashMap<Customer, Integer> ratingCustomers = new HashMap<>();
+        LocalDateTime minDate;
+        switch (period){
+            case 1:
+                minDate = LocalDateTime.now().minusDays(1);
+                break;
+            case 2:
+                minDate = LocalDateTime.now().minusMonths(1);
+                break;
+            case 3:
+                minDate = LocalDateTime.now().minusYears(1);
+                break;
+            default:
+                minDate = LocalDateTime.now();
         }
 
+        soldHistories.forEach(soldHistory -> {
+            if(soldHistory.getDate().isAfter(minDate)){
+                if(ratingCustomers.containsKey(soldHistory.getCustomer())){
+                    ratingCustomers.put(soldHistory.getCustomer(), ratingCustomers.get(soldHistory.getCustomer()) + 1);
+                } else{
+                    ratingCustomers.put(soldHistory.getCustomer(), 1);
+                }
+            }
+        });
+
+        List<Customer> sortedCustomers = ratingCustomers.entrySet()
+                .stream()
+                .sorted(Collections.reverseOrder(Map.Entry.comparingByValue()))
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+        if(sortedCustomers.size() == 0){
+            System.out.println("No rating for this period");
+            return;
+        }
+        IntStream.range(0, sortedCustomers.size()).forEach(i -> {
+            Customer customer = sortedCustomers.get(i);
+            System.out.printf("%d. %s %s $%d - %d purchances\n", i+1, customer.getName(), customer.getSurname(), customer.getBalance(), ratingCustomers.get(customer));
+        });
     }
     public void editCustomer(List<Customer> customers, Scanner scanner){
         System.out.println("\n-------- Customer edit --------\n");

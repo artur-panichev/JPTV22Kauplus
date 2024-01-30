@@ -2,40 +2,41 @@ package jptv22kauplus;
 import entity.Customer;
 import entity.Discount;
 import entity.Product;
+import entity.SoldHistory;
 import managers.CustomerManager;
 import managers.DiscountManager;
 import managers.ProductManager;
-import managers.StorageManager;
 import tools.InputFromKeyboard;
 import tools.IsTrueTask;
 
 import java.util.List;
 import java.util.Scanner;
+import managers.PersistToDatabase;
 
 public class App {
     private final Scanner scanner;
-    private StorageManager storageManager;
+    private PersistToDatabase persistToDatabase;
     private ProductManager productManager;
     private CustomerManager customerManager;
     private DiscountManager discountManager;
     private List<Product> products;
     private List<Customer> customers;
     private List<Discount> discounts;
-    private int totalSoldPrice;
+    private List<SoldHistory> soldHistories;
 
     public App() {
         this.scanner = new Scanner(System.in);
-        this.storageManager = new StorageManager();
+        this.persistToDatabase = new PersistToDatabase();
         this.productManager = new ProductManager();
         this.discountManager = new DiscountManager();
         this.customerManager = new CustomerManager();
-        this.totalSoldPrice = storageManager.loadTotalSoldPrice();
-        this.products = storageManager.loadProducts();
-        this.customers = storageManager.loadCustomers();
-        this.discounts = storageManager.loadDiscounts();
+        this.products = this.persistToDatabase.loadProducts();
+        this.customers = this.persistToDatabase.loadCustomers();
+        this.discounts = this.persistToDatabase.loadDiscounts();
+        this.soldHistories = this.persistToDatabase.loadSoldHistories();
     }
 
-    void run(){
+    void run() throws Exception {
         boolean repeat = true;
         System.out.println("----------  Jewelry shop ----------");
         do{
@@ -67,7 +68,6 @@ public class App {
                 case 1:
                     if(!IsTrueTask.checkTask("1. Add product", scanner)) break;
                     products.add(this.productManager.addProduct(this.scanner));
-                    this.storageManager.saveProducts(this.products);
                     break;
                 case 2:
                     if(!IsTrueTask.checkTask("2. List products", scanner)) break;
@@ -78,7 +78,6 @@ public class App {
                 case 3:
                     if(!IsTrueTask.checkTask("3. Add customer", scanner)) break;
                     customers.add(this.customerManager.addCustomer(this.scanner));
-                    this.storageManager.saveCustomers(this.customers);
                     break;
                 case 4:
                     if(!IsTrueTask.checkTask("4. List customers", scanner)) break;
@@ -88,30 +87,31 @@ public class App {
                     break;
                 case 5:
                     if(!IsTrueTask.checkTask("5. Sell product to customer", scanner)) break;
-                    this.totalSoldPrice += this.productManager.buyProduct(this.products, this.customers, this.scanner);
-                    this.storageManager.saveCustomers(this.customers);
-                    this.storageManager.saveProducts(this.products);
-                    this.storageManager.saveTotalSoldPrice(this.totalSoldPrice);
+                    SoldHistory history = this.productManager.buyProduct(this.products, this.customers, this.scanner);
+                    if(history != null){
+                        this.soldHistories.add(history);
+                        this.persistToDatabase.saveSoldHistory(history);
+                    }
+
                     break;
                 case 6:
                     if(!IsTrueTask.checkTask("6. Total sold price", this.scanner)) break;
-                    System.out.println("Total products sold price: " + this.totalSoldPrice);
+                    System.out.println("Total products sold price: " /*вызов функции оборота*/);
                     break;
                 case 7:
                     if(!IsTrueTask.checkTask("7. Add money to customer", this.scanner)) break;
                     this.customerManager.addMoneyToCustomer(this.customers, this.scanner);
-                    this.storageManager.saveCustomers(this.customers);
                     break;
                 case 8:
                     if(!IsTrueTask.checkTask("8. Rating customers", this.scanner)) break;
                     System.out.println("\n-------- Customers rating --------\n");
-                    this.customerManager.printCustomersRating(this.customers);
+                    this.customerManager.printCustomersRating(this.soldHistories, this.scanner);
                     System.out.println("\n");
                     break;
                 case 9:
                     if(!IsTrueTask.checkTask("9. Rating products", this.scanner)) break;
                     System.out.println("\n-------- Products rating --------\n");
-                    this.productManager.printProductsRating(this.products);
+                    this.productManager.printProductsRating(this.soldHistories, this.scanner);
                     System.out.println("\n");
                     break;
                 case 10:
@@ -128,11 +128,10 @@ public class App {
                 case 13:
                     if(!IsTrueTask.checkTask("13. Add discount", scanner)) break;
                     discounts.add(this.discountManager.addDiscount(this.scanner));
-                    this.storageManager.saveDiscounts(this.discounts);
                     break;
                 case 14:
                     if(!IsTrueTask.checkTask("14. Time before next discount", scanner)) break;
-                    System.out.println(discountManager.timeBeforeNextDiscount(discounts));
+                    System.out.println(discountManager.nextDiscount(discounts));
                     break;
             }
         } while(repeat);

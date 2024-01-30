@@ -1,12 +1,8 @@
 package jptv22kauplus;
 
-import tools.InputFromKeyboard;
-
-import java.util.Scanner;
-
 public class Main {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         App app;
         app = new App();
         app.run();

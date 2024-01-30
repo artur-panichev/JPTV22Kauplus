@@ -2,15 +2,18 @@ package managers;
 
 import entity.Customer;
 import entity.Product;
+import entity.SoldHistory;
 import tools.InputFromKeyboard;
 import tools.IsTrueTask;
 
-import java.util.List;
-import java.util.Scanner;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class ProductManager {
+    private PersistToDatabase  persistToDatabase = new PersistToDatabase();
+    
     public Product addProduct(Scanner scanner){
         System.out.println("\n-------- Add new product --------\n");
 
@@ -25,6 +28,8 @@ public class ProductManager {
 
         Product product = new Product(name, price, count);
 
+        persistToDatabase.saveProduct(product);
+        
         return product;
     }
     public void printListProducts(List<Product> products){
@@ -33,7 +38,7 @@ public class ProductManager {
             System.out.printf("%d. %s $%d %dpcs. - %d sells\n", i+1, product.getName(), product.getPrice(), product.getCount(), product.getBoughtTimes());
         });
     }
-    public int buyProduct(List<Product> products, List<Customer> customers, Scanner scanner){
+    public SoldHistory buyProduct(List<Product> products, List<Customer> customers, Scanner scanner){
         System.out.println("\n-------- Buy product --------\n");
         CustomerManager customerManager = new CustomerManager();
         System.out.println("0. Return");
@@ -42,43 +47,82 @@ public class ProductManager {
         customerManager.printListCustomers(customers);
         System.out.print("Select customer: ");
         int customerNum = InputFromKeyboard.inputFromRange(0, customers.size(), scanner);
-        if(customerNum == 0) return 0;
+        if(customerNum == 0) return null;
 
         System.out.println("Products list:");
         this.printListProducts(products);
         System.out.print("Select product: ");
         int productNum = InputFromKeyboard.inputFromRange(0, products.size(), scanner);
-        if(productNum == 0) return 0;
+        if(productNum == 0) return null;
 
         Customer customer = customers.get(customerNum-1);
         Product product = products.get(productNum-1);
         if(!(product.getCount() > 0)){
             System.out.println("Товара нет в наличии!");
-            return 0;
+            return null;
         }
         if(customer.getBalance() >= product.getPrice()){
             customer.setBalance(customer.getBalance()-product.getPrice());
             product.setCount(product.getCount()-1);
-            customer.setProductsPurchanced(customer.getProductsPurchanced()+1);
             customer.setProductsPurchanced(customer.getProductsPurchanced()+1);
             product.setBoughtTimes(product.getBoughtTimes()+1);
 
             List<Product> customerProducts = customer.getBoughtProducts();
             customerProducts.add(product);
             customer.setBoughtProducts(customerProducts);
-            return product.getPrice();
+            
+            persistToDatabase.updateCustomer(customer);
+            persistToDatabase.updateProduct(product);
+            
+            return new SoldHistory(product, product.getPrice(), customer, LocalDateTime.now());
         } else{
-            System.out.println("Не хватает денег!");
+            System.out.println("Not enough money!");
         }
-        return 0;
+        return null;
     }
-    public void printProductsRating(List<Product> products){
-        List<Product> sortedProducts = products.stream().sorted(((o1, o2) -> Integer.compare(o2.getBoughtTimes(), o1.getBoughtTimes()))).collect(Collectors.toList());
-        for (int i = 0; i < sortedProducts.size(); i++) {
-            Product product = sortedProducts.get(i);
-            System.out.printf("%d %s $%d %dpcs. - %d sells\n", i, product.getName(), product.getPrice(), product.getCount(), product.getBoughtTimes());
-        }
+    public void printProductsRating(List<SoldHistory> soldHistories, Scanner scanner){
+        System.out.println("Products rating:");
+        System.out.println("Select period of rating:");
+        System.out.println("1. Day");
+        System.out.println("2. Month");
+        System.out.println("3. Year");
+        System.out.print("Enter number of period: ");
+        int period = InputFromKeyboard.inputFromRange(1, 3, scanner);
 
+        HashMap<Product, Integer> ratingProducts = new HashMap<>();
+        LocalDateTime minDate;
+        switch (period){
+            case 1:
+                minDate = LocalDateTime.now().minusDays(1);
+                break;
+            case 2:
+                minDate = LocalDateTime.now().minusMonths(1);
+                break;
+            case 3:
+                minDate = LocalDateTime.now().minusYears(1);
+                break;
+            default:
+                minDate = LocalDateTime.now();
+        }
+        soldHistories.forEach(soldHistory -> {
+            if(soldHistory.getDate().isAfter(minDate)){
+                if(ratingProducts.containsKey(soldHistory.getProduct())){
+                    ratingProducts.put(soldHistory.getProduct(), ratingProducts.get(soldHistory.getProduct()) + 1);
+                } else{
+                    ratingProducts.put(soldHistory.getProduct(), 1);
+                }
+            }
+        });
+        List<Product> sortedProducts = ratingProducts.entrySet()
+                .stream()
+                .sorted(Collections.reverseOrder(Map.Entry.comparingByValue()))
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+        if(sortedProducts.size() == 0){
+            System.out.println("No rating for this period");
+            return;
+        }
+        printListProducts(sortedProducts);
     }
 
     public void editProduct(List<Product> products, Scanner scanner){

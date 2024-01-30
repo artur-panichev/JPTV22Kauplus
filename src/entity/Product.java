@@ -1,13 +1,27 @@
 package entity;
 
 import java.io.Serializable;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
 
-public class Product implements Serializable {
+@Entity
+public class Product {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
     private String name;
     private int price;
     private int count;
     private int boughtTimes;
 
+    public Product() {
+    }
+
+    
+    
     public Product(String name, int price, int count) {
         this.name = name;
         this.price = price;

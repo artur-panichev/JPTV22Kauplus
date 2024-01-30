@@ -1,19 +1,41 @@
 package entity;
 
 import java.io.Serializable;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
 
-public class Discount implements Serializable {
+@Entity
+public class Discount {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
     private String name;
     private int discount;
-    private LocalDate start;
-    private LocalDate end;
+    private LocalDateTime start;
+    private LocalDateTime end;
 
-    public Discount(String name, int discount, LocalDate start, LocalDate end) {
+    public Discount() {
+    }
+
+    
+    
+    public Discount(String name, int discount, LocalDateTime start, LocalDateTime end) {
         this.name = name;
         this.discount = discount;
         this.start = start;
         this.end = end;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public int getDiscount() {
@@ -24,19 +46,19 @@ public class Discount implements Serializable {
         this.discount = discount;
     }
 
-    public LocalDate getStart() {
+    public LocalDateTime getStart() {
         return start;
     }
 
-    public void setStart(LocalDate start) {
+    public void setStart(LocalDateTime start) {
         this.start = start;
     }
 
-    public LocalDate getEnd() {
+    public LocalDateTime getEnd() {
         return end;
     }
 
-    public void setEnd(LocalDate end) {
+    public void setEnd(LocalDateTime end) {
         this.end = end;
     }
 }

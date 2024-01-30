@@ -3,16 +3,17 @@ package managers;
 import entity.Discount;
 import tools.InputFromKeyboard;
 
-import java.time.Duration;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.chrono.ChronoLocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Scanner;
 
 public class DiscountManager {
-    public Discount addDiscount(Scanner scanner){
+    
+    PersistToDatabase persistToDatabase = new PersistToDatabase();
+    
+    public Discount addDiscount(Scanner scanner) throws Exception {
         System.out.println("\n-------- Add new discount --------\n");
 
         System.out.print("Enter discount name: ");
@@ -21,45 +22,52 @@ public class DiscountManager {
         System.out.print("Enter discount percent: ");
         int discountPercent = InputFromKeyboard.inputFromRange(1, 100, scanner);
 
-        // Define a custom DateTimeFormatter for the input format
-        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
 
-        System.out.print("Enter discount start date (DD-MM-YYYY): ");
-        LocalDate startDate = LocalDate.parse(scanner.nextLine(), dateFormatter);
+        System.out.print("Enter start date (DD-MM-YYYY): ");
+        LocalDateTime startDate = LocalDateTime.parse(scanner.nextLine() + " 00:00", formatter);
 
-        System.out.print("Enter discount end date (DD-MM-YYYY): ");
-        LocalDate endDate = LocalDate.parse(scanner.nextLine(), dateFormatter);
+        System.out.print("Enter end date (DD-MM-YYYY): ");
+        LocalDateTime endDate = LocalDateTime.parse(scanner.nextLine() + " 23:59", formatter);
 
+        if(startDate.isAfter(endDate)){
+            throw new Exception("Start date cannot be after end date");
+        }
         Discount discount = new Discount(name, discountPercent, startDate, endDate);
-
+        
+        persistToDatabase.saveDiscount(discount);
+        
         return discount;
     }
-
-    public String timeBeforeNextDiscount(List<Discount> discounts){
+    public String nextDiscount(List<Discount> discountList){
         Discount nextDiscount = null;
-        LocalDateTime dateNow = LocalDateTime.now();
-
-        for(int i = 0; i < discounts.size(); i++){
-            if(discounts.get(i).getStart().isBefore(ChronoLocalDate.from(dateNow)) && discounts.get(i).getEnd().isAfter(ChronoLocalDate.from(dateNow))){
-                return "Discount is running";
+        LocalDateTime now = LocalDateTime.now();
+        for(int i = 0; i < discountList.size(); i++){
+            Discount discount = discountList.get(i);
+            if(discount.getStart().isBefore(now) && discount.getEnd().isAfter(now)){
+                long days = ChronoUnit.DAYS.between(now, discount.getEnd());
+                long hours = ChronoUnit.HOURS.between(now, discount.getEnd()) - days*24;
+                long minutes = ChronoUnit.MINUTES.between(now, discount.getEnd()) - days*24*60 - hours*60;
+                long seconds = ChronoUnit.SECONDS.between(now, discount.getEnd()) - days*24*60*60 - hours*60*60 - minutes*60;
+                return String.format("Discount is running. \"%s\" (%d%%) - before end: %d days %d hours %d minutes %d seconds", discount.getName(), discount.getDiscount(), days, hours, minutes, seconds);
             }
-            if(nextDiscount == null && discounts.get(i).getStart().isAfter(ChronoLocalDate.from(dateNow))){
-                nextDiscount = discounts.get(i);
+            if(nextDiscount == null){
+                if(discount.getStart().isAfter(now)){
+                    nextDiscount = discount;
+                }
                 continue;
             }
-            if(nextDiscount.getStart().isAfter(discounts.get(i).getStart())){
-                nextDiscount = discounts.get(i);
+            if(nextDiscount.getStart().isAfter(discount.getStart()) && discount.getStart().isAfter(now)){
+                nextDiscount = discount;
             }
         }
         if(nextDiscount == null){
             return "Discounts wasn't planned yet";
         }
-        Duration duration = Duration.between(dateNow, nextDiscount.getStart().atStartOfDay());
-        long days = duration.toDays();
-        long hours = duration.toHours() % 24;
-        long minutes = duration.toMinutes() % 60;
-        long seconds = duration.getSeconds() % 60;
-
-        return String.format("%d дней, %d часов, %d минут, %d секунд", days, hours, minutes, seconds);
+        long days = ChronoUnit.DAYS.between(now, nextDiscount.getStart());
+        long hours = ChronoUnit.HOURS.between(now, nextDiscount.getStart()) - days*24;
+        long minutes = ChronoUnit.MINUTES.between(now, nextDiscount.getStart()) - days*24*60 - hours*60;
+        long seconds = ChronoUnit.SECONDS.between(now, nextDiscount.getStart()) - days*24*60*60 - hours*60*60 - minutes*60;
+        return String.format("%d days %d hours %d minutes %d seconds before \"%s\"(%d%%) discount", days, hours, minutes, seconds, nextDiscount.getName(), nextDiscount.getDiscount());
     }
 }
